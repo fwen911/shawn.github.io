@@ -1,0 +1,22 @@
+{
+  "name": "audio-sharing-app",
+  "version": "1.0.0",
+  "description": "一个支持音频上传、播放和播放次数限制的音频分享应用",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "live-server",
+    "build": "echo \"项目为纯静态网站，无需构建\""
+  },
+  "keywords": [
+    "audio",
+    "share",
+    "storage",
+    "web-app"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

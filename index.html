@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>限时音频分享平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        /* 音频卡片动画效果 */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 模态框动画 */
+        #shareModal {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        #shareModal:not(.hidden) {
+            opacity: 1;
+        }
+        
+        /* 分享链接复制按钮样式 */
+        #copyShareLink:hover {
+            background-color: #4a5568;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        warning: '#F59E0B',
+                        dark: '#1F2937',
+                        light: '#F9FAFB'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .audio-card-hover {
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+            .audio-card-hover:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+            }
+            .btn-secondary {
+                @apply bg-white border border-gray-300 text-dark hover:bg-gray-50 font-medium py-2 px-4 rounded-lg transition-all duration-300;
+            }
+            .input-file {
+                @apply w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer;
+            }
+            .progress-bar {
+                @apply h-1.5 rounded-full bg-gray-200 overflow-hidden;
+            }
+            .progress-fill {
+                @apply h-full bg-primary transition-all duration-300;
+            }
+            .fade-in {
+                animation: fadeIn 0.5s ease-in;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            .slide-up {
+                animation: slideUp 0.5s ease-out;
+            }
+            @keyframes slideUp {
+                from { transform: translateY(20px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gradient-to-br from-light to-gray-100 min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-md backdrop-blur-md bg-opacity-90 sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-music text-primary text-2xl"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-dark">限时音频分享</h1>
+            </div>
+            <div class="hidden md:flex items-center space-x-4">
+                <span class="text-sm text-gray-600">每个音频最多可播放 5 次</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 上传区域 -->
+        <section class="mb-12 slide-up">
+            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8">
+                <h2 class="text-xl md:text-2xl font-semibold mb-6 text-dark flex items-center">
+                    <i class="fa fa-upload text-primary mr-3"></i>上传音频文件
+                </h2>
+                <form id="uploadForm" class="space-y-4">
+                    <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary transition-colors duration-300">
+                        <i class="fa fa-microphone text-5xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600 mb-4">拖放音频文件到此处，或</p>
+                        <input type="file" id="audioFile" accept="audio/*" class="input-file" />
+                        <p class="text-xs text-gray-500 mt-2">支持的格式：MP3, WAV, OGG, AAC</p>
+                    </div>
+                    <button type="submit" class="btn-primary w-full md:w-auto">
+                        <i class="fa fa-plus-circle mr-2"></i>上传并分享
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- 音频列表 -->
+        <section class="mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl md:text-2xl font-semibold text-dark flex items-center">
+                    <i class="fa fa-list-ul text-primary mr-3"></i>已上传音频
+                </h2>
+                <button id="clearAllBtn" class="btn-secondary text-sm hidden">
+                    <i class="fa fa-trash mr-2"></i>清空全部
+                </button>
+            </div>
+            
+            <!-- 空状态 -->
+            <div id="emptyState" class="bg-white rounded-xl shadow-lg p-12 text-center slide-up">
+                <i class="fa fa-music text-6xl text-gray-300 mb-4"></i>
+                <h3 class="text-xl font-medium text-gray-700 mb-2">还没有上传任何音频</h3>
+                <p class="text-gray-500 mb-6">上传一个音频文件开始分享吧！</p>
+                <button onclick="document.getElementById('audioFile').click()" class="btn-primary">
+                    <i class="fa fa-upload mr-2"></i>立即上传
+                </button>
+            </div>
+            
+            <!-- 音频列表容器 -->
+            <div id="audioList" class="space-y-4">
+                <!-- 音频卡片将通过 JavaScript 动态添加 -->
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-400 text-sm">限时音频分享平台 &copy; 2024 | 每个音频最多可播放 5 次</p>
+        </div>
+    </footer>
+
+    <!-- 分享模态框 -->
+    <div id="shareModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden fade-in">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 m-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-dark">分享音频</h3>
+                <button id="closeShareModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <p class="text-gray-600 mb-4">复制以下链接分享给朋友，大家共同享受5次播放机会：</p>
+            <div class="relative mb-4">
+                <input type="text" id="shareLink" class="w-full px-4 py-2 border border-gray-300 rounded-lg pr-10 text-sm" readonly />
+                <button id="copyShareLink" class="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80">
+                    <i class="fa fa-copy"></i>
+                </button>
+            </div>
+            <button id="shareViaQR" class="btn-secondary w-full mb-2">
+                <i class="fa fa-qrcode mr-2"></i>生成二维码
+            </button>
+            <div id="qrcodeContainer" class="hidden justify-center mb-4 py-4">
+                <!-- 二维码将在这里生成 -->
+            </div>
+            <button id="confirmShareModal" class="btn-primary w-full">
+                完成
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <!-- 分享音频模态框 -->
+    <div id="shareModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg w-full max-w-md p-6 shadow-xl transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-dark">分享音频</h3>
+                <button id="closeShareModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <p class="text-gray-600 mb-2">通过链接分享音频：</p>
+                <div class="flex">
+                    <input type="text" id="shareLink" readonly 
+                           class="flex-1 border border-gray-300 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <button id="copyShareLink" class="btn-secondary rounded-l-none px-4">
+                        <i class="fa fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <button id="shareViaQR" class="btn-primary w-full mb-2">
+                    <i class="fa fa-qrcode mr-2"></i>生成二维码
+                </button>
+                <div id="qrcodeContainer" class="hidden justify-center">
+                    <!-- 二维码将在这里动态生成 -->
+                </div>
+            </div>
+            <div class="text-sm text-gray-500 mb-4">
+                <i class="fa fa-info-circle mr-1"></i> 音频共享5次播放机会，所有用户共享这5次机会。
+            </div>
+            <div class="flex justify-end">
+                <button id="confirmShareModal" class="btn-primary">关闭</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+    </body>
+</html>
